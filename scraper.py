@@ -67,26 +67,29 @@ def parse_salary(text: str) -> tuple[Optional[int], Optional[int]]:
     
     return None, None
 
-def classify_job_family(title: str) -> Optional[str]:
-    """Classify job title into a job family."""
+def classify_job_family(title: str) -> str:
+    """Classify job title into a job family. Returns 'Other' if unclassified."""
     title_lower = title.lower()
     
     mappings = {
-        'Software Engineering': ['engineer', 'developer', 'swe', 'frontend', 'backend', 'fullstack', 'devops', 'sre', 'platform'],
-        'Product Management': ['product manager', 'product lead', 'pm', 'product owner'],
-        'Data Science': ['data scientist', 'machine learning', 'ml engineer', 'ai ', 'data analyst', 'analytics'],
-        'Design': ['designer', 'ux', 'ui', 'design lead', 'creative'],
-        'Marketing': ['marketing', 'growth', 'brand', 'content', 'seo', 'demand gen'],
-        'Sales': ['sales', 'account executive', 'ae ', 'sdr', 'bdr', 'revenue'],
-        'People / HR': ['recruiter', 'people', 'hr ', 'human resources', 'talent', 'compensation'],
-        'Finance': ['finance', 'accountant', 'controller', 'fp&a', 'financial'],
+        'Software Engineering': ['engineer', 'developer', 'swe', 'frontend', 'backend', 'fullstack', 'devops', 'sre', 'platform', 'infrastructure', 'architect'],
+        'Product Management': ['product manager', 'product lead', 'pm', 'product owner', 'product director'],
+        'Data Science': ['data scientist', 'machine learning', 'ml engineer', 'ai ', 'data analyst', 'analytics', 'research scientist'],
+        'Design': ['designer', 'ux', 'ui', 'design lead', 'creative', 'visual design'],
+        'Marketing': ['marketing', 'growth', 'brand', 'content', 'seo', 'demand gen', 'communications'],
+        'Sales': ['sales', 'account executive', 'ae ', 'sdr', 'bdr', 'revenue', 'business development'],
+        'People / HR': ['recruiter', 'people', 'hr ', 'human resources', 'talent', 'compensation', 'hrbp'],
+        'Finance': ['finance', 'accountant', 'controller', 'fp&a', 'financial', 'accounting'],
+        'Customer Success': ['customer success', 'csm', 'customer support', 'support engineer'],
+        'Operations': ['operations', 'ops ', 'chief of staff', 'program manager'],
+        'Legal': ['legal', 'counsel', 'attorney', 'compliance'],
     }
     
     for family, keywords in mappings.items():
         if any(kw in title_lower for kw in keywords):
             return family
     
-    return None
+    return 'Other'
 
 def parse_location(location: str) -> tuple[Optional[str], Optional[str]]:
     """Extract metro and state from location string."""
@@ -145,19 +148,58 @@ def parse_location(location: str) -> tuple[Optional[str], Optional[str]]:
 # GREENHOUSE SCRAPER
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Companies using Greenhouse (add more as needed)
+# Companies using Greenhouse (verified working + expanded list)
 GREENHOUSE_COMPANIES = [
-    'stripe', 'figma', 'notion', 'airbnb', 'coinbase', 'plaid', 'ramp', 'brex',
-    'datadog', 'snowflake', 'databricks', 'mongodb', 'elastic', 'hashicorp',
-    'twilio', 'sendgrid', 'segment', 'amplitude', 'mixpanel',
-    'dropbox', 'slack', 'zoom', 'asana', 'monday', 'clickup',
-    'anthropic', 'openai', 'cohere', 'huggingface',
-    'robinhood', 'chime', 'sofi', 'affirm', 'klarna',
-    'doordash', 'instacart', 'uber', 'lyft',
-    'netflix', 'spotify', 'discord', 'reddit', 'pinterest', 'snap',
-    'cloudflare', 'vercel', 'netlify', 'supabase',
-    'rippling', 'gusto', 'deel', 'remote', 'oyster',
-    'linear', 'retool', 'airtable', 'coda',
+    # Fintech
+    'stripe', 'coinbase', 'brex', 'robinhood', 'chime', 'sofi', 'affirm', 'plaid',
+    'marqeta', 'checkout', 'wise', 'revolut', 'nubank', 'mercadolibre',
+    
+    # Enterprise SaaS
+    'datadog', 'databricks', 'mongodb', 'elastic', 'twilio', 'amplitude', 'mixpanel',
+    'contentful', 'launchdarkly', 'segment', 'mparticle', 'braze', 'iterable',
+    'klaviyo', 'attentive', 'gorgias', 'intercom', 'drift', 'qualified',
+    
+    # Productivity / Collaboration
+    'figma', 'asana', 'airtable', 'notion', 'dropbox', 'miro', 'canva',
+    'loom', 'calendly', 'docusign', 'box', 'lucid', 'smartsheet',
+    
+    # AI / ML
+    'anthropic', 'openai', 'cohere', 'huggingface', 'scale', 'labelbox',
+    'weights-and-biases', 'datarobot', 'h2o', 'c3ai', 'databricks',
+    
+    # Consumer / Marketplace
+    'airbnb', 'doordash', 'instacart', 'lyft', 'discord', 'reddit', 'pinterest',
+    'nextdoor', 'yelp', 'glassdoor', 'zillow', 'redfin', 'opendoor', 'compass',
+    'thumbtack', 'taskrabbit', 'rover', 'care', 'wag',
+    
+    # DevTools / Infrastructure
+    'cloudflare', 'vercel', 'netlify', 'supabase', 'planetscale', 'cockroachlabs',
+    'timescale', 'influxdata', 'grafana', 'elastic', 'splunk', 'newrelic',
+    'pagerduty', 'victorops', 'opsgenie', 'atlassian', 'gitlab', 'github',
+    
+    # HR Tech
+    'rippling', 'gusto', 'deel', 'remote', 'oyster', 'lattice', 'culture-amp',
+    'lever', 'greenhouse', 'gem', 'ashby', 'eightfold', 'phenom', 'beamery',
+    
+    # Security
+    'crowdstrike', 'sentinelone', 'zscaler', 'okta', 'onelogin', 'auth0',
+    'snyk', 'lacework', 'orca-security', 'wiz', 'cybereason', 'tanium',
+    
+    # E-commerce
+    'shopify', 'bigcommerce', 'woocommerce', 'squarespace', 'webflow',
+    'bolt', 'fast', 'afterpay', 'klarna', 'affirm', 'sezzle',
+    
+    # Healthcare Tech
+    'veracyte', 'tempus', 'flatiron', 'health-catalyst', 'livongo',
+    'teladoc', 'hims', 'ro', 'nurx', 'cerebral', 'headway', 'alma',
+    
+    # Gaming / Entertainment
+    'roblox', 'unity', 'epic', 'riot', 'activision', 'ea', 'take-two',
+    'scopely', 'playtika', 'zynga', 'king', 'supercell',
+    
+    # Other Tech
+    'gusto', 'toast', 'procore', 'servicetitan', 'podium', 'qualtrics',
+    'medallia', 'sprinklr', 'hootsuite', 'buffer', 'later', 'sproutsocial',
 ]
 
 def scrape_greenhouse(company: str) -> List[JobPosting]:
@@ -219,12 +261,43 @@ def scrape_greenhouse(company: str) -> List[JobPosting]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 LEVER_COMPANIES = [
-    'netflix', 'twitch', 'palantir', 'flexport', 'faire', 'anduril',
-    'scale', 'weights-and-biases', 'labelbox', 'snorkel',
-    'nerdwallet', 'creditkarma', 'betterment', 'wealthfront',
-    'carta', 'equity-methods', 'shareworks',
-    'lattice', 'culture-amp', '15five', 'betterworks',
-    'grammarly', 'notion', 'roam', 'mem',
+    # Big Tech / Consumer
+    'netflix', 'palantir', 'twitch', 'spotify', 'snap', 'pinterest',
+    'bytedance', 'tiktok', 'reddit', 'quora', 'medium',
+    
+    # Fintech
+    'wealthfront', 'betterment', 'acorns', 'stash', 'titan', 'public',
+    'carta', 'angellist', 'republic', 'wefunder', 'seedinvest',
+    'nerdwallet', 'creditkarma', 'creditrepair', 'self', 'dave',
+    
+    # Enterprise / B2B
+    'flexport', 'faire', 'anduril', 'scale', 'weights-and-biases',
+    'figma', 'miro', 'notion', 'coda', 'slite', 'confluence',
+    'productboard', 'amplitude', 'pendo', 'heap', 'mixpanel',
+    
+    # HR Tech
+    'lattice', 'culture-amp', '15five', 'betterworks', 'reflektive',
+    'lever', 'greenhouse', 'gem', 'hired', 'vettery', 'triplebyte',
+    
+    # Dev Tools
+    'github', 'gitlab', 'bitbucket', 'sourcegraph', 'codestream',
+    'linear', 'shortcut', 'asana', 'monday', 'clickup', 'jira',
+    
+    # AI / ML
+    'labelbox', 'snorkel', 'scale', 'appen', 'sama', 'hive',
+    'huggingface', 'cohere', 'jasper', 'copy-ai', 'writesonic',
+    
+    # Security
+    'snyk', 'lacework', 'orca-security', 'wiz', 'bridgecrew',
+    'tessian', 'abnormal', 'material', 'vanta', 'drata',
+    
+    # Health Tech  
+    'hims', 'ro', 'nurx', 'cerebral', 'talkspace', 'betterhelp',
+    'headway', 'alma', 'spring-health', 'lyra', 'modern-health',
+    
+    # Other
+    'grammarly', 'duolingo', 'coursera', 'udemy', 'masterclass',
+    'calm', 'headspace', 'peloton', 'whoop', 'oura',
 ]
 
 def scrape_lever(company: str) -> List[JobPosting]:
@@ -278,10 +351,30 @@ def scrape_lever(company: str) -> List[JobPosting]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 ASHBY_COMPANIES = [
-    'ramp', 'linear', 'vercel', 'railway', 'render', 'fly',
-    'resend', 'clerk', 'inngest', 'trigger',
-    'liveblocks', 'tiptap', 'plasmic',
-    'cal', 'dub', 'papermark',
+    # Fintech / Finance
+    'ramp', 'mercury', 'pilot', 'bench', 'finally', 'puzzle',
+    'modern-treasury', 'increase', 'unit', 'alloy', 'plaid',
+    
+    # Dev Tools / Infrastructure  
+    'linear', 'vercel', 'railway', 'render', 'fly', 'planetscale',
+    'supabase', 'neon', 'upstash', 'convex', 'turso',
+    'resend', 'clerk', 'inngest', 'trigger', 'temporal',
+    
+    # Collaboration / Productivity
+    'liveblocks', 'tiptap', 'plasmic', 'framer', 'webflow',
+    'cal', 'dub', 'papermark', 'documenso', 'formbricks',
+    
+    # AI / ML
+    'anthropic', 'perplexity', 'jasper', 'writer', 'copy-ai',
+    'stability', 'runway', 'midjourney', 'replicate', 'modal',
+    
+    # Open Source / Dev Community
+    'posthog', 'airbyte', 'metabase', 'directus', 'strapi',
+    'supertokens', 'appwrite', 'n8n', 'windmill',
+    
+    # Other Startups
+    'cal-com', 'dub-co', 'documenso', 'formbricks', 'hanko',
+    'infisical', 'lago', 'novu', 'openreplay', 'pezzo',
 ]
 
 def scrape_ashby(company: str) -> List[JobPosting]:
