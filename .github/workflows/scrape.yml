@@ -6,6 +6,19 @@ on:
     - cron: '0 */6 * * *'
   # Allow manual trigger
   workflow_dispatch:
+    inputs:
+      scraper:
+        description: 'Which scraper to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - jobs
+          - h1b
+          - perm
+          - bls
+          - sec
 
 jobs:
   scrape:
@@ -25,8 +38,37 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Run scraper
+      - name: Run Job Board Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'jobs' || github.event_name == 'schedule' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scraper.py
+      
+      - name: Run H-1B Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'h1b' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python h1b_scraper.py
+      
+      - name: Run PERM Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'perm' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python perm_scraper.py
+      
+      - name: Run BLS OEWS Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'bls' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python bls_scraper.py
+      
+      - name: Run SEC Proxy Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'sec' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python sec_scraper.py
