@@ -1,0 +1,65 @@
+name: Scrape Government Data (Weekly)
+
+on:
+  schedule:
+    # Run Sundays at 4 AM UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      scraper:
+        description: 'Which scraper to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - h1b
+          - perm
+          - bls
+          - sec
+
+jobs:
+  scrape-gov:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run H-1B Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'h1b' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python h1b_scraper.py
+
+      - name: Run PERM Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'perm' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python perm_scraper.py
+
+      - name: Run BLS OEWS Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'bls' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python bls_scraper.py
+
+      - name: Run SEC Proxy Scraper
+        if: ${{ github.event.inputs.scraper == 'all' || github.event.inputs.scraper == 'sec' || github.event_name == 'schedule' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python sec_scraper.py
