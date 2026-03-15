@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from utils import (
     CompRecord, classify_job_family, parse_location, parse_salary,
-    upload_to_supabase, log_scrape_run, fetch_with_retry, log,
+    upload_to_supabase, log_scrape_run, fetch_with_retry, validate_and_filter, log,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -347,14 +347,16 @@ def main():
             total_errors += 1
         time.sleep(0.5)
 
-    # Summary and upload
+    # Summary, quality filter, and upload
     log.info("\n" + "=" * 60)
     log.info("Total jobs with salary data: %d", len(all_jobs))
 
     inserted = 0
     if all_jobs:
-        log.info("Uploading to Supabase (upsert)...")
-        records = [j.to_db_dict() for j in all_jobs]
+        log.info("Running data quality checks...")
+        clean_jobs = validate_and_filter(all_jobs)
+        log.info("Uploading %d records to Supabase (upsert)...", len(clean_jobs))
+        records = [j.to_db_dict() for j in clean_jobs]
         inserted = upload_to_supabase(records)
 
     log_scrape_run('Job Boards', inserted, len(all_jobs), total_errors)

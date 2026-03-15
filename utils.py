@@ -8,6 +8,7 @@ import re
 import time
 import logging
 import requests
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional, List, Tuple
 from dataclasses import dataclass, asdict
@@ -343,6 +344,103 @@ def parse_salary(text: str) -> Tuple[Optional[int], Optional[int]]:
             return val, val
 
     return None, None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA QUALITY — Per-Family Salary Bounds & Outlier Detection
+# ─────────────────────────────────────────────────────────────────────────────
+
+FAMILY_SALARY_BOUNDS = {
+    'Software Engineering': (45_000, 500_000),
+    'Product Management':   (50_000, 450_000),
+    'Data Science':         (45_000, 450_000),
+    'Design':               (40_000, 350_000),
+    'Marketing':            (35_000, 350_000),
+    'Sales':                (30_000, 500_000),
+    'People / HR':          (35_000, 350_000),
+    'Finance':              (40_000, 400_000),
+    'Customer Success':     (35_000, 250_000),
+    'Operations':           (35_000, 300_000),
+    'Legal':                (50_000, 450_000),
+    'Executive':            (80_000, 1_000_000),
+    'Other':                (25_000, 500_000),
+}
+
+DEFAULT_BOUNDS = (25_000, 500_000)
+
+
+def _percentile(sorted_vals: list, pct: float) -> float:
+    """Simple percentile calculation on a pre-sorted list."""
+    if not sorted_vals:
+        return 0
+    idx = (len(sorted_vals) - 1) * pct
+    lo = int(idx)
+    hi = min(lo + 1, len(sorted_vals) - 1)
+    frac = idx - lo
+    return sorted_vals[lo] * (1 - frac) + sorted_vals[hi] * frac
+
+
+def validate_and_filter(records: list) -> list:
+    """
+    Two-pass data quality gate:
+      1. Per-family salary bounds — reject records outside realistic range
+      2. IQR outlier detection — reject statistical outliers within each family
+    Returns filtered list. Logs rejection counts.
+    """
+    if not records:
+        return records
+
+    original = len(records)
+
+    # Pass 1: Per-family bounds
+    bounded = []
+    bounds_rejected = 0
+    for r in records:
+        fam = r.family or 'Other'
+        lo, hi = FAMILY_SALARY_BOUNDS.get(fam, DEFAULT_BOUNDS)
+        if lo <= r.midpoint <= hi:
+            bounded.append(r)
+        else:
+            bounds_rejected += 1
+
+    if bounds_rejected:
+        log.info(f"  Bounds filter: rejected {bounds_rejected} records outside family salary ranges")
+
+    # Pass 2: IQR outlier detection per family
+    by_family = defaultdict(list)
+    for r in bounded:
+        by_family[r.family or 'Other'].append(r)
+
+    clean = []
+    iqr_rejected = 0
+    for fam, fam_records in by_family.items():
+        if len(fam_records) < 10:
+            clean.extend(fam_records)
+            continue
+
+        mids = sorted(r.midpoint for r in fam_records)
+        q1 = _percentile(mids, 0.25)
+        q3 = _percentile(mids, 0.75)
+        iqr = q3 - q1
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+
+        for r in fam_records:
+            if lower <= r.midpoint <= upper:
+                clean.append(r)
+            else:
+                iqr_rejected += 1
+
+    if iqr_rejected:
+        log.info(f"  IQR filter: rejected {iqr_rejected} statistical outliers")
+
+    total_rejected = original - len(clean)
+    if total_rejected:
+        log.info(f"  Data quality: {len(clean)}/{original} records passed ({total_rejected} filtered)")
+    else:
+        log.info(f"  Data quality: all {original} records passed")
+
+    return clean
 
 
 # ─────────────────────────────────────────────────────────────────────────────
