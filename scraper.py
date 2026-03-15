@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Optional, Dict, List
 from dataclasses import dataclass, asdict
 
+from skills_extractor import extract_skills
+
 # Supabase config (set via environment variables)
 SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://xrcgtkkaapfmzzjvyphu.supabase.co')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
@@ -514,6 +516,7 @@ def upload_to_supabase(jobs: List[JobPosting]) -> int:
     # Convert to database format
     records = []
     for job in jobs:
+        skills = extract_skills(getattr(job, 'jd_text', '') or '')
         records.append({
             'company': job.company,
             'title': job.title,
@@ -525,21 +528,38 @@ def upload_to_supabase(jobs: List[JobPosting]) -> int:
             'midpoint': job.midpoint,
             'source': job.source,
             'posted_date': job.posted_date,
+            'job_url': job.job_url or None,
+            'skills': skills if skills else None,
             'status': 'approved',
         })
     
     url = f"{SUPABASE_URL}/rest/v1/comp_data"
-    
+    _new_cols_confirmed = None  # None=unknown, True=exist, False=don't exist yet
+
+    def _strip_new_cols(batch):
+        """Return batch without job_url/skills (fallback for pre-migration tables)."""
+        return [{k: v for k, v in r.items() if k not in ('job_url', 'skills')} for r in batch]
+
     try:
-        # Upload in batches of 100
         inserted = 0
         for i in range(0, len(records), 100):
             batch = records[i:i+100]
             response = requests.post(url, json=batch, headers=headers)
             if response.status_code in [200, 201]:
                 inserted += len(batch)
+                _new_cols_confirmed = True
+            elif response.status_code in [400, 422] and ('job_url' in response.text or 'skills' in response.text or 'column' in response.text.lower()):
+                # New columns don't exist yet — fall back to original schema
+                if _new_cols_confirmed is None:
+                    print("  Note: job_url/skills columns not yet in comp_data — run SQL migration to enable. Uploading without them.")
+                    _new_cols_confirmed = False
+                response2 = requests.post(url, json=_strip_new_cols(batch), headers=headers)
+                if response2.status_code in [200, 201]:
+                    inserted += len(batch)
+                else:
+                    print(f"  Upload error: {response2.status_code} - {response2.text[:200]}")
             else:
-                print(f"  Upload error: {response.status_code} - {response.text}")
+                print(f"  Upload error: {response.status_code} - {response.text[:200]}")
         return inserted
     except Exception as e:
         print(f"  Upload error: {e}")
